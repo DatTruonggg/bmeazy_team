@@ -9,7 +9,7 @@ pip install git+https://github.com/openai/CLIP.git
 
 change paths in `.env` file: 
 ```python
-FAISS_CLIPV2_H14 = "/home/dattruong/dat/AI/Competition/BMEazy/data//clipv2_h14_cosine.bin"
+FAISS_CLIPV2_H14 = "/home/dattruong/dat/AI/Competition/BMEazy/data/clipv2_h14_cosine.bin"
 FAISS_CLIPV2_L14 = "/home/dattruong/dat/AI/Competition/BMEazy/data/faiss_clipv2l14_cosine.bin"
 FAISS_CLIP_B16 = "/home/dattruong/dat/AI/Competition/BMEazy/data/clip_b16_cosine.bin"
 
