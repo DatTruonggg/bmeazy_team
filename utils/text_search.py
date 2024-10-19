@@ -72,57 +72,6 @@ class TextSearch:
     
     def load_bin_file(self, bin_file: str):
         return faiss.read_index(bin_file)
-
-    # def get_s3_image_url(self, image_path: str):
-    #     # Tạo URL đầy đủ cho hình ảnh trong S3
-    #     return f'https://{self.bucket_name}.s3.ap-southeast-1.amazonaws.com/{image_path}'
-    
-    # def text_search(self, text:str , index,  top_k:int, model_type:str, storage: str):
-    #     #text = self.translater(text)
-    #     text = GoogleTranslator(source='auto', target='en').translate(text)
-    #     ###### TEXT FEATURES EXTRACTING ######
-    #     if model_type == 'clip':
-    #         text = clip.tokenize([text]).to(self.__device)  
-    #         text_features = self.clip_B16.encode_text(text)
-    #     elif model_type == 'clipv2_l14':
-    #         text = self.clipv2_L14_tokenizer([text]).to(self.__device)  
-    #         text_features = self.clipv2_L14.encode_text(text)
-    #     else:
-    #         text = self.clipv2_H14_tokenizer([text]).to(self.__device)  
-    #         text_features = self.clipv2_H14.encode_text(text)
-        
-    #     text_features /= text_features.norm(dim=-1, keepdim=True)
-    #     text_features = text_features.cpu().detach().numpy().astype(np.float32)
-
-    #     ###### SEARCHING #####
-    #     if model_type == 'clip':
-    #         index_choosed = self.index_clip
-    #     elif model_type == 'clipv2_l14':
-    #         index_choosed = self.index_clipv2_l14
-    #     else:
-    #         index_choosed = self.index_clipv2_h14
-        
-    #     if index is None:
-    #       scores, idx_image = index_choosed.search(text_features, k=top_k)
-    #     else:
-    #       id_selector = faiss.IDSelectorArray(index)
-    #       scores, idx_image = index_choosed.search(text_features, k=top_k, 
-    #                                                params=faiss.SearchParametersIVF(sel=id_selector))
-          
-    #     # scores, idx_image = index_choosed.search(text_features, k=top_k)
-    #     idx_image = idx_image.flatten()
-
-    #     ##### CHECK IDX ##### 
-    #     ###### GET INFOS KEYFRAMES_ID ######
-    #     if storage == "cloud": 
-    #         infos_query = list(map(self.json_path_cloud.get, list(idx_image)))
-    #     else: 
-    #         infos_query = list(map(self.json_path.get, list(idx_image)))
-
-    #     ##image_paths = [info['image_path'] for info in infos_query] ##TODO: Bug here 
-    #     image_paths = [(info['image_path']) for info in infos_query]
-
-    #     return scores.flatten(), idx_image, infos_query, image_paths
      
     def text_search(self, text:str ,  top_k:int, model_type:str, storage: str):
         #text = self.translater(text)
@@ -166,10 +115,10 @@ class TextSearch:
 
         return scores.flatten(), idx_image, infos_query, image_paths
     
-    def image_search(self, id_query, k, storage):
+    def image_search(self, id_query, top_k: int, storage:str):
         query_feats = self.index_clip.reconstruct(id_query).reshape(1,-1)
 
-        scores, idx_image = self.index_clip.search(query_feats, k=k)
+        scores, idx_image = self.index_clip.search(query_feats, k=top_k)
         idx_image = idx_image.flatten()
 
         if storage == "cloud": 
@@ -178,7 +127,6 @@ class TextSearch:
             infos_query = list(map(self.json_path.get, list(idx_image)))        
 
         image_paths = [info['image_path'] for info in infos_query]
-        print(image_paths)
         return scores.flatten(), idx_image, infos_query, image_paths
     
     def show_images(self, image_paths):  # Hiển thị demo trong localhost
@@ -228,24 +176,6 @@ class TextSearch:
                     print(f"Error accessing image: {str(e)}")  # Log any errors
 
         plt.show() 
-    # def show_segment(self, id_query_path):
-    #     stt = next((i for i, info in self.json_path.items() if info['image_path'] == id_query_path), None)
-    #     if stt is None:
-    #         return None, None  # Hoặc xử lý lỗi theo cách khác
-
-    #     start = max(0, stt)
-    #     end = min(stt + 99, len(self.json_path) - 1)
-
-    #     return [(self.get_path_frame(i), f"{self.get_path_frame(i).split('/')[-2]}, {int(self.get_frame_info(i)['list_shot_id'][0])}") 
-    #             for i in range(start, end + 1)]
-
-    # def get_path_frame(self, index):
-    #     # Trả về đường dẫn hình ảnh dựa vào index
-    #     return self.json_path[index]['image_path']
-
-    # def get_frame_info(self, index):
-    #     # Trả về thông tin hình ảnh dựa vào index
-    #     return self.json_path[index]
 
     def write_csv(self, infos_query, des_path):
         check_files = []
@@ -369,16 +299,6 @@ class TextSearch:
     #     image_paths = [info['image_path'] for info in infos_query]
     #     return scores, idx_image, infos_query, image_paths
     
-    def image_search(self, id_query, k):
-        query_feats = self.index_clip.reconstruct(id_query).reshape(1,-1)
-
-        scores, idx_image = self.index_clip.search(query_feats, k=k)
-        idx_image = idx_image.flatten()
-
-        infos_query = list(map(self.id2img_fps.get, list(idx_image)))
-        
-        image_paths = [info['image_path'] for info in infos_query]
-        return scores.flatten(), idx_image, infos_query, image_paths
     
     def reranking(self, prev_result, lst_pos_vote_idxs, lst_neg_vote_idxs, k):
         '''
@@ -419,23 +339,25 @@ class TextSearch:
         return lst_scores, list_ids, infos_query, list_image_paths
 
 
-if __name__ == "__main__":
-    query = "Một người mặc áo khoác có mũ màu trắng hai lần ném vật gì đó lên cao. \
-            Tiếp theo là cảnh quay ba lá cờ treo trên một tòa nhà, mỗi lá cờ đều có những ngôi sao màu vàng. \
-            Sau đó, một người mặc áo trắng ném một vật gì đó lên trời. Cuối cùng, cảnh quay cho thấy một quả pháo được bắn lên."
-    json_path = os.getenv("ID2IMG") 
-    json_path_cloud = os.getenv("ID2IMG_CLOUD")
-    clipb16_bin = os.getenv("FAISS_CLIP_B16")
-    clipv2_l14_bin = os.getenv("FAISS_CLIPV2_L14")
-    clipv2_h14_bin = os.getenv("FAISS_CLIPV2_H14")
-    audio_json_path = os.getenv("AUDO_ID2IMG_FPS")
-    scene_path = os.getenv("SCENE_ID2INFO")
-    img2audio_json_path = os.getenv("IMG_ID2AUDIO_ID")
-    video_division_path = os.getenv("VIDEO_DIVSION_TAG")
-    map_keyframes = os.getenv("MAP_KEYFRAME")
-    video_id2img_id = os.getenv("VIDEO_ID2IMG_ID")
-    root_db = os.getenv("ROOT_DB")
-    search = TextSearch(json_path, json_path_cloud, clipb16_bin, clipv2_l14_bin, clipv2_h14_bin, audio_json_path, img2audio_json_path)
+# if __name__ == "__main__":
+#     query = "Một người mặc áo khoác có mũ màu trắng hai lần ném vật gì đó lên cao. \
+#             Tiếp theo là cảnh quay ba lá cờ treo trên một tòa nhà, mỗi lá cờ đều có những ngôi sao màu vàng. \
+#             Sau đó, một người mặc áo trắng ném một vật gì đó lên trời. Cuối cùng, cảnh quay cho thấy một quả pháo được bắn lên."
+#     json_path = os.getenv("ID2IMG") 
+#     json_path_cloud = os.getenv("ID2IMG_CLOUD")
+#     clipb16_bin = os.getenv("FAISS_CLIP_B16")
+#     clipv2_l14_bin = os.getenv("FAISS_CLIPV2_L14")
+#     clipv2_h14_bin = os.getenv("FAISS_CLIPV2_H14")
+#     audio_json_path = os.getenv("AUDO_ID2IMG_FPS")
+#     scene_path = os.getenv("SCENE_ID2INFO")
+#     img2audio_json_path = os.getenv("IMG_ID2AUDIO_ID")
+#     video_division_path = os.getenv("VIDEO_DIVSION_TAG")
+#     map_keyframes = os.getenv("MAP_KEYFRAME")
+#     video_id2img_id = os.getenv("VIDEO_ID2IMG_ID")
+#     root_db = os.getenv("ROOT_DB")
+#     search = TextSearch(json_path, json_path_cloud, clipb16_bin, clipv2_l14_bin, clipv2_h14_bin, audio_json_path, img2audio_json_path)
  
-    _, _, _, image_paths = search.text_search(text=query, top_k=100, model_type="clipv2_h14", storage="cloud")
-    search.show_images_cloud(image_paths)
+#     # _, _, _, image_paths = search.text_search(text=query, top_k=100, model_type="clipv2_h14", storage="cloud")
+#     _, _, _, image_paths = search.image_search(id_query=538178, top_k=100, storage="cloud")
+
+#     search.show_images_cloud(image_paths)
