@@ -22,9 +22,9 @@ from deep_translator import GoogleTranslator
 load_dotenv()
 # from utils.nlp_processing import Translation
 from utils.combine_utils import merge_searching_results_by_addition
-from utils.ocr_retrieval_engine.ocr_retrieval import ocr_retrieval
-from utils.semantic_embed.speech_retrieval import speech_retrieval
-from utils.object_retrieval_engine.object_retrieval import object_retrieval
+# from utils.ocr_retrieval_engine.ocr_retrieval import ocr_retrieval
+# from utils.semantic_embed.speech_retrieval import speech_retrieval
+# from utils.object_retrieval_engine.object_retrieval import object_retrieval
 
 
 class TextSearch:
@@ -41,9 +41,9 @@ class TextSearch:
         self.audio_id2img_id = self.load_json_file(audio_json_path)
         self.img_id2audio_id = self.load_json_file(img2audio_json_path)
 
-        self.object_retrieval = object_retrieval()
-        self.ocr_retrieval = ocr_retrieval()
-        self.asr_retrieval = speech_retrieval()
+        # self.object_retrieval = object_retrieval()
+        # self.ocr_retrieval = ocr_retrieval()
+        # self.asr_retrieval = speech_retrieval()
 
         self.index_clip = self.load_bin_file(clip_bin)    
         self.index_clipv2_h14 = self.load_bin_file(clipv2_h14_bin)    
@@ -178,6 +178,7 @@ class TextSearch:
             infos_query = list(map(self.json_path.get, list(idx_image)))        
 
         image_paths = [info['image_path'] for info in infos_query]
+        print(image_paths)
         return scores.flatten(), idx_image, infos_query, image_paths
     
     def show_images(self, image_paths):  # Hiển thị demo trong localhost
@@ -206,7 +207,7 @@ class TextSearch:
         fig = plt.figure(figsize=(25, 20))
         columns = int(math.sqrt(len(image_paths)))
         rows = int(np.ceil(len(image_paths) / columns))
-
+        print(image_paths)
         for i in range(1, columns * rows + 1):
             if i - 1 < len(image_paths):
                 image_key = image_paths[i - 1].lstrip('/')  # Remove leading slash if needed
@@ -284,89 +285,89 @@ class TextSearch:
 
 
 
-    def asr_post_processing(self, tmp_asr_scores, tmp_asr_idx_image, k):
-        result = dict()
-        for asr_idx, asr_score in zip(tmp_asr_idx_image, tmp_asr_scores):
-            lst_ids = self.audio_id2img_id[asr_idx]
-            for idx in lst_ids: 
-                if result.get(idx, None) is None:
-                    result[idx] = asr_score
-                else:
-                    result[idx] += asr_score
+    # def asr_post_processing(self, tmp_asr_scores, tmp_asr_idx_image, k):
+    #     result = dict()
+    #     for asr_idx, asr_score in zip(tmp_asr_idx_image, tmp_asr_scores):
+    #         lst_ids = self.audio_id2img_id[asr_idx]
+    #         for idx in lst_ids: 
+    #             if result.get(idx, None) is None:
+    #                 result[idx] = asr_score
+    #             else:
+    #                 result[idx] += asr_score
 
-        result = sorted(result.items(), key=lambda x:x[1], reverse=True)
-        asr_idx_image = [item[0] for item in result]
-        asr_scores = [item[1] for item in result]
-        return np.array(asr_scores)[:k], np.array(asr_idx_image)[:k]
+    #     result = sorted(result.items(), key=lambda x:x[1], reverse=True)
+    #     asr_idx_image = [item[0] for item in result]
+    #     asr_scores = [item[1] for item in result]
+    #     return np.array(asr_scores)[:k], np.array(asr_idx_image)[:k]
     
-    def asr_retrieval_helper(self, asr_input, k, index, semantic, keyword):
-        # Map img_id to audio_id
-        if index is not None:
-            audio_temp = dict()
-            for idx in index:
-                audio_idxes = self.img_id2audio_id[idx]
-                for audio_idx in audio_idxes:
-                    if audio_temp.get(audio_idx, None) is None:
-                        audio_temp[audio_idx] = [idx]
-                    else:
-                        audio_temp[audio_idx].append(idx)
+    # def asr_retrieval_helper(self, asr_input, k, index, semantic, keyword):
+    #     # Map img_id to audio_id
+    #     if index is not None:
+    #         audio_temp = dict()
+    #         for idx in index:
+    #             audio_idxes = self.img_id2audio_id[idx]
+    #             for audio_idx in audio_idxes:
+    #                 if audio_temp.get(audio_idx, None) is None:
+    #                     audio_temp[audio_idx] = [idx]
+    #                 else:
+    #                     audio_temp[audio_idx].append(idx)
 
-            audio_index = np.array(list(audio_temp.keys())).astype('int64')
-            tmp_asr_scores, tmp_asr_idx_image = self.asr_retrieval(asr_input, k=len(audio_index), index=audio_index, semantic=semantic, keyword=keyword)
+    #         audio_index = np.array(list(audio_temp.keys())).astype('int64')
+    #         tmp_asr_scores, tmp_asr_idx_image = self.asr_retrieval(asr_input, k=len(audio_index), index=audio_index, semantic=semantic, keyword=keyword)
             
-            result = dict()
-            for asr_idx, asr_score in zip(tmp_asr_idx_image, tmp_asr_scores):
-                for idx in audio_temp[asr_idx]:
-                    if result.get(idx, None) is None:
-                        result[idx] = asr_score
-                    else:
-                        result[idx] += asr_score
-            result = sorted(result.items(), key=lambda x:x[1], reverse=True)
-            asr_idx_image = np.array([item[0] for item in result])[:k]
-            asr_scores = np.array([item[1] for item in result])[:k]
-        else:
-            tmp_asr_scores, tmp_asr_idx_image = self.asr_retrieval(asr_input, k=k, index=None, semantic=semantic, keyword=keyword)
-            asr_scores, asr_idx_image = self.asr_post_processing(tmp_asr_scores, tmp_asr_idx_image, k)
-        return asr_scores, asr_idx_image
+    #         result = dict()
+    #         for asr_idx, asr_score in zip(tmp_asr_idx_image, tmp_asr_scores):
+    #             for idx in audio_temp[asr_idx]:
+    #                 if result.get(idx, None) is None:
+    #                     result[idx] = asr_score
+    #                 else:
+    #                     result[idx] += asr_score
+    #         result = sorted(result.items(), key=lambda x:x[1], reverse=True)
+    #         asr_idx_image = np.array([item[0] for item in result])[:k]
+    #         asr_scores = np.array([item[1] for item in result])[:k]
+    #     else:
+    #         tmp_asr_scores, tmp_asr_idx_image = self.asr_retrieval(asr_input, k=k, index=None, semantic=semantic, keyword=keyword)
+    #         asr_scores, asr_idx_image = self.asr_post_processing(tmp_asr_scores, tmp_asr_idx_image, k)
+    #     return asr_scores, asr_idx_image
 
-    def context_search(self, object_input, ocr_input, asr_input, k, semantic=False, keyword=True, index=None, useid=False):
-        '''
-        Example:
-        inputs = {
-            'bbox': "a0person",
-            'class': "person0, person1",
-            'color':None,
-            'tag':None
-        }
-        '''
-        scores, idx_image = [], []
-        ###### SEARCHING BY OBJECT #####
-        if object_input is not None:
-            object_scores, object_idx_image = self.object_retrieval(object_input, k=k, index=index)
-            scores.append(object_scores)
-            idx_image.append(object_idx_image)
+    # def context_search(self, object_input, ocr_input, asr_input, k, semantic=False, keyword=True, index=None, useid=False):
+    #     '''
+    #     Example:
+    #     inputs = {
+    #         'bbox': "a0person",
+    #         'class': "person0, person1",
+    #         'color':None,
+    #         'tag':None
+    #     }
+    #     '''
+    #     scores, idx_image = [], []
+    #     ###### SEARCHING BY OBJECT #####
+    #     if object_input is not None:
+    #         object_scores, object_idx_image = self.object_retrieval(object_input, k=k, index=index)
+    #         scores.append(object_scores)
+    #         idx_image.append(object_idx_image)
 
-        ###### SEARCHING BY OCR #####
-        if ocr_input is not None:
-            ocr_scores, ocr_idx_image = self.ocr_retrieval(ocr_input, k=k, index=index)
-            scores.append(ocr_scores)
-            idx_image.append(ocr_idx_image)
+    #     ###### SEARCHING BY OCR #####
+    #     if ocr_input is not None:
+    #         ocr_scores, ocr_idx_image = self.ocr_retrieval(ocr_input, k=k, index=index)
+    #         scores.append(ocr_scores)
+    #         idx_image.append(ocr_idx_image)
 
-        ###### SEARCHING BY ASR #####
-        if asr_input is not None:
-            if not useid:
-                asr_scores, asr_idx_image = self.asr_retrieval_helper(asr_input, k, None, semantic, keyword)
-            else:
-                asr_scores, asr_idx_image = self.asr_retrieval_helper(asr_input, k, index, semantic, keyword)
-            scores.append(asr_scores)
-            idx_image.append(asr_idx_image)
+    #     ###### SEARCHING BY ASR #####
+    #     if asr_input is not None:
+    #         if not useid:
+    #             asr_scores, asr_idx_image = self.asr_retrieval_helper(asr_input, k, None, semantic, keyword)
+    #         else:
+    #             asr_scores, asr_idx_image = self.asr_retrieval_helper(asr_input, k, index, semantic, keyword)
+    #         scores.append(asr_scores)
+    #         idx_image.append(asr_idx_image)
         
-        scores, idx_image = merge_searching_results_by_addition(scores, idx_image)
+    #     scores, idx_image = merge_searching_results_by_addition(scores, idx_image)
 
-        ###### GET INFOS KEYFRAMES_ID ######
-        infos_query = list(map(self.id2img_fps.get, list(idx_image)))
-        image_paths = [info['image_path'] for info in infos_query]
-        return scores, idx_image, infos_query, image_paths
+    #     ###### GET INFOS KEYFRAMES_ID ######
+    #     infos_query = list(map(self.id2img_fps.get, list(idx_image)))
+    #     image_paths = [info['image_path'] for info in infos_query]
+    #     return scores, idx_image, infos_query, image_paths
     
     def image_search(self, id_query, k):
         query_feats = self.index_clip.reconstruct(id_query).reshape(1,-1)
@@ -422,18 +423,19 @@ if __name__ == "__main__":
     query = "Một người mặc áo khoác có mũ màu trắng hai lần ném vật gì đó lên cao. \
             Tiếp theo là cảnh quay ba lá cờ treo trên một tòa nhà, mỗi lá cờ đều có những ngôi sao màu vàng. \
             Sau đó, một người mặc áo trắng ném một vật gì đó lên trời. Cuối cùng, cảnh quay cho thấy một quả pháo được bắn lên."
-    json_path = "data/id2img_fps.json"
-    json_path_cloud = "data/id2fps_cloud_v2.json"
-    clipb16_bin = "data/faiss_clip_b16_test.bin"
-    clipv2_l14_bin = "data/clipv2_l14_cosine.bin"
-    clipv2_h14_bin = "data/clipv2_h14_cosine.bin"
-    audio_json_path = "data/audio_id2img_id.json"
-    scene_path = "data/scene_id2info.json"
-    img2audio_json_path = "data/img_id2audio_id.json"
-    video_division_path = "data/video_division_tag.json"
-    map_keyframes = "data/map_keyframes.json"
-    video_id2img_id = "data/video_id2img_id.json"
+    json_path = os.getenv("ID2IMG") 
+    json_path_cloud = os.getenv("ID2IMG_CLOUD")
+    clipb16_bin = os.getenv("FAISS_CLIP_B16")
+    clipv2_l14_bin = os.getenv("FAISS_CLIPV2_L14")
+    clipv2_h14_bin = os.getenv("FAISS_CLIPV2_H14")
+    audio_json_path = os.getenv("AUDO_ID2IMG_FPS")
+    scene_path = os.getenv("SCENE_ID2INFO")
+    img2audio_json_path = os.getenv("IMG_ID2AUDIO_ID")
+    video_division_path = os.getenv("VIDEO_DIVSION_TAG")
+    map_keyframes = os.getenv("MAP_KEYFRAME")
+    video_id2img_id = os.getenv("VIDEO_ID2IMG_ID")
+    root_db = os.getenv("ROOT_DB")
     search = TextSearch(json_path, json_path_cloud, clipb16_bin, clipv2_l14_bin, clipv2_h14_bin, audio_json_path, img2audio_json_path)
  
-    _, _, _, image_paths = search.text_search(text=query, index=None, top_k=100, model_type="clipv2_h14", storage="local")
-    search.show_images(image_paths)
+    _, _, _, image_paths = search.text_search(text=query, top_k=100, model_type="clipv2_h14", storage="cloud")
+    search.show_images_cloud(image_paths)

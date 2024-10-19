@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import numpy as np 
 import matplotlib
 matplotlib.use('Agg')  
-
+import boto3
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +37,8 @@ video_id2img_id = os.getenv("VIDEO_ID2IMG_ID")
 root_db = os.getenv("ROOT_DB")
 
 FPS = 25.0
+s3 = boto3.client('s3', region_name='ap-southeast-1')
+bucket_name = "bmeazy"
 
 search = TextSearch(json_path, json_path_cloud, clipb16_bin, clipv2_l14_bin, clipv2_h14_bin, audio_json_path, img2audio_json_path)
 
@@ -64,17 +66,17 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
 
 
     if model_type == "clip": 
-        lst_scores, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clip", storage=storage)
+        _, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clip", storage=storage)
 
     elif model_type == "clipv2_l14": 
-        lst_scores, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clipv2_l14", storage=storage)
+        _, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clipv2_l14", storage=storage)
     elif model_type == "clipv2_h14": 
-        lst_scores, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clipv2_h14", storage=storage)
+        _, list_ids, _, list_image_paths = search.text_search(text=text, top_k=top_k, model_type="clipv2_h14", storage=storage)
 
     elif model_type == "clip + clipv2_l14" :
         scores_clip, list_clip_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clip', storage = storage)
         scores_clipv2_l14, list_clipv2_l14_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clipv2_l14', storage = storage)
-        lst_scores, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
+        _, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
                                                                   [list_clip_ids, list_clipv2_l14_ids])
     
         infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
@@ -83,7 +85,7 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
     elif model_type == "clipv2_l14 + clipv2_h14": 
         scores_clipv2_l14, list_clipv2_l14_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clipv2_l14', storage = storage)
         scores_clipv2_h14, list_clipv2_h14_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clipv2_h14', storage = storage)
-        lst_scores, list_ids = merge_searching_results_by_addition([scores_clipv2_l14, scores_clipv2_h14],
+        _, list_ids = merge_searching_results_by_addition([scores_clipv2_l14, scores_clipv2_h14],
                                                                   [list_clipv2_l14_ids, list_clipv2_h14_ids])
         
         infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
@@ -92,7 +94,7 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
     elif model_type == "clip + clipv2_h14":
         scores_clip, list_clip_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clip', storage = storage)
         scores_clipv2_h14, list_clipv2_h14_ids, _, _ = search.text_search(text = text, top_k=top_k, model_type='clipv2_h14', storage = storage)
-        lst_scores, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
+        _, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
                                                                   [scores_clipv2_h14, list_clipv2_h14_ids])
         
         infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
@@ -104,21 +106,28 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
     # Create titles for each image
     titles = []
     img_paths = []
-    for img_path in list_image_paths:
-        folder = img_path.split("/")[-2]
-        img_path = os.path.join(root_db, img_path)
-        img_paths.append(img_path)
-        frame_idx = os.path.basename(img_path).split(".")[0].strip()  # Frame index
-        
-        # Giữ nguyên các số không nếu frame_idx là '000', '0000', hoặc '00000'
-        # if frame_idx in ["000", "0000", "00000"]:
-        #     frame_idx_display = "0000"  # Giữ nguyên frame_idx
-        # else: 
-        #     frame_idx_display = frame_idx.lstrip("0")  # Loại bỏ các số không ở đầu
-        
-        title = f"{folder}, {frame_idx}"
-        titles.append(title)
-        
+    if storage == "local":
+        for img_path in list_image_paths:
+            folder = img_path.split("/")[-2]
+            img_path = os.path.join(root_db, img_path)
+            img_paths.append(img_path)
+            frame_idx = os.path.basename(img_path).split(".")[0].strip()  # Frame index
+            
+            title = f"{folder}, {frame_idx}"
+            titles.append(title)
+    elif storage == "cloud":
+        for img_path in list_image_paths:
+            # Construct the S3 URL for the image
+            folder = img_path.split("/")[-2]
+            frame_idx = img_path.split("/")[-1].split(".")[0].strip() 
+
+            image_key = img_path.lstrip('/')  # Remove leading slashes for correct key formation
+            full_img_path = f"https://{bucket_name}.s3.amazonaws.com/{image_key}"
+            img_paths.append(full_img_path)
+
+            # Create a title if needed
+            title = f"{folder}, {frame_idx}"
+            titles.append(title)
     return [(img, title) for img, title in zip(img_paths, titles)]
 
 
@@ -139,8 +148,8 @@ def search_neighbor(folder_name, image_name):
     images = []
     
     # Find start and end indices
-    start_idx = max(0, idx_image - 10)  # Do not go below 0
-    end_idx = min(idx_image + 189, len(DictKeyframe2Id) - 1)  # Ensure we don't go out of bounds
+    start_idx = max(0, idx_image - 30)  # Do not go below 0
+    end_idx = min(idx_image + 269, len(DictKeyframe2Id) - 1)  # Ensure we don't go out of bounds
 
     # Iterate through indices from `start_idx` to `end_idx`
     for idx in range(start_idx, end_idx + 1):
@@ -150,12 +159,6 @@ def search_neighbor(folder_name, image_name):
 
             folder = os.path.basename(os.path.dirname(image_path))  # Extract folder name from path
             frame_idx = os.path.basename(image_path).split(".")[0]  # Frame index
-            
-            # Giữ nguyên các số không nếu frame_idx là '000', '0000', hoặc '00000'
-            # if frame_idx in ["000", "0000", "00000"]:
-            #     frame_idx_display = "0000"  # Giữ nguyên frame_idx
-            # else: 
-            #     frame_idx_display = frame_idx.lstrip("0")  # Loại bỏ các số không ở đầu
             
             title = f"{folder}, {frame_idx}"
             images.append((image_path, title))        
@@ -175,13 +178,6 @@ def download_csv(folder_name, image_name, download_name):
             
             folder = os.path.basename(os.path.dirname(image_path))  # Extract folder name from path
             frame_idx = os.path.basename(image_path).split(".")[0]  # Frame index
-            
-            # Giữ nguyên các số không nếu frame_idx là '000', '0000', hoặc '00000'
-            # if frame_idx in ["000", "0000", "00000"]:
-            #     frame_idx_display = "0000"  # Giữ nguyên frame_idx
-            # else: 
-            #     frame_idx_display = frame_idx.lstrip("0")  # Loại bỏ các số không ở đầu
-            
             title = f"{folder}, {frame_idx}"  # Sử dụng frame_idx_display để định dạng tiêu đề
             images.append((image_path, title)) 
 
@@ -244,18 +240,6 @@ def object_search():
     pass
 
 def frame_idx_to_milliseconds(evt: gr.SelectData):
-    # try:
-    #     # Convert frame index to integer
-    #     frame_idx = int(frame_idx)
-        
-    #     # Convert frame index to milliseconds
-    #     time_ms = (frame_idx / FPS) * 1000
-    #     return int(time_ms)  # Return time in milliseconds (rounded to nearest integer)
-    # except ValueError:
-    #     # Handle invalid frame index input
-    #     return None
-    
-        # Lấy caption từ sự kiện chọn
     caption = evt.value['caption']
     if caption:
         # Tách folder và image name từ caption
@@ -270,13 +254,13 @@ def frame_idx_to_milliseconds(evt: gr.SelectData):
         time_ms = (int(frame_idx_display) / FPS) * 1000
     return int(time_ms)
 
-def submit_kis_and_vis(session_id, evaluation_id, video_id, frame_idx):
+def submit_kis_and_vis(session_id, evaluation_id, video_id, milisec_name):
     url = f"https://eventretrieval.one/api/v2/submit/{evaluation_id}"
     headers = {
         "Content-Type": "application/json"
     }
     params = {"session": session_id}
-    start_time = frame_idx_to_milliseconds(frame_idx)
+    start_time = milisec_name
     # Create the body for the POST request
     body = {
         "answerSets": [
@@ -301,13 +285,13 @@ def submit_kis_and_vis(session_id, evaluation_id, video_id, frame_idx):
         return f"Failed to submit KIS. Status code: {response.status_code}, Message: {response.text}"
 
 
-def submit_qa(session_id, evaluation_id, video_id, frame_idx, answer):
+def submit_qa(session_id, evaluation_id, video_id, milisec_name, answer):
     url = f"https://eventretrieval.one/api/v2/submit/{evaluation_id}"
     headers = {
         "Content-Type": "application/json"
     }
     params = {"session": session_id}
-    time_ms = frame_idx_to_milliseconds(frame_idx)
+    time_ms = milisec_name
     # Format the answer according to the expected structure
     answer_qa = f"{answer}-{video_id}-{time_ms}"
 
@@ -332,21 +316,8 @@ def submit_qa(session_id, evaluation_id, video_id, frame_idx, answer):
     else:
         return f"Failed to submit QA. Status code: {response.status_code}, Message: {response.text}"
 
-# def update_textboxes(selected_image):
-#     if selected_image:
-#         folder_name = os.path.basename(os.path.dirname(selected_image))
-#         image_name = os.path.basename(selected_image).split('.')[0]  # Lấy tên file mà không có phần mở rộng
-#         return folder_name, image_name
-#     return "", ""
-
-# def update_textboxes(selected_image):
-#     if selected_image:
-#         # selected_image là một tuple (img_path, title)
-#         img_path, title = selected_image  # Lấy cả img_path và title từ tuple
-#         folder_name = title.split(", ")[0]  # Lấy folder name từ tiêu đề
-#         image_name = title.split(", ")[1]  # Lấy image name từ tiêu đề
-#         return folder_name, image_name
-#     return "", ""
+def update_storage(storage):
+    return "cloud" if storage else "local"
 
 def get_selected_info(evt: gr.EventData):
     # Lấy chỉ số hình ảnh được chọn
@@ -368,6 +339,7 @@ def get_folder_select_index(evt: gr.SelectData):
 
 def get_frame_select_index(evt: gr.SelectData):
     # Lấy caption từ sự kiện chọn
+
     caption = evt.value['caption']
     if caption:
         # Tách folder và image name từ caption
@@ -375,20 +347,6 @@ def get_frame_select_index(evt: gr.SelectData):
         #folder_name = parts[0]  # Lấy tên folder
         image_name = parts[1]   # Lấy tên hình ảnh
     return image_name
-
-def get_select_index(evt: gr.SelectData):
-    caption = evt.value['caption']
-    print("Selected caption:", caption)  # Debugging output
-    parts = caption.split(', ')
-    if len(parts) == 2:
-        folder_name = parts[0]
-        image_name = parts[1]
-        return folder_name, image_name  # Return both values if needed
-    return "", ""
-
-# def get_select_index(evt: gr.SelectData):
-#     print(evt.value['caption'])
-#     return evt.value
 
 # Gradio Interface with custom CSS for the search box and button
 with gr.Blocks(css="""
@@ -431,7 +389,7 @@ with gr.Blocks(css="""
                     value="clipv2_l14",  # Thiết lập mặc định nếu cần
                     scale=2
                 )
-                storage = gr.Checkbox(label="cloud", value=True, scale=1)
+                storage = gr.Dropdown(choices=["local", "cloud"], label="DB", value="cloud", scale=1)
                 #download_name = gr.Textbox(label="CSV name", placeholder="query_v3_*_kis", scale=2)
                 folder_name = gr.Textbox(label="Folder name", placeholder="L00_V000....", scale=1)
                 image_name = gr.Textbox(label="Image name", placeholder="0000....", scale=1)
@@ -452,7 +410,6 @@ with gr.Blocks(css="""
             next_search_button.click(fn=search_neighbor,
                                      inputs=[folder_name, image_name],
                                      outputs=image_output)
-            
             # Thay đổi trong phần khởi tạo giao diện
             image_output.select(fn=get_folder_select_index, inputs = None, outputs=folder_name)
             image_output.select(fn=get_frame_select_index, inputs = None, outputs=image_name)
@@ -460,11 +417,11 @@ with gr.Blocks(css="""
 
 
             submit_kis_button.click(fn=submit_kis_and_vis, 
-                                    inputs=[session_id, evaluation_id, folder_name, image_name],
+                                    inputs=[session_id, evaluation_id, folder_name, milisec_name],
                                     outputs=gr.Textbox(label="KIS Submission Result"))
 
             submit_qa_button.click(fn=submit_qa, 
-                                inputs=[session_id, evaluation_id, folder_name, image_name, answer],
+                                inputs=[session_id, evaluation_id, folder_name, milisec_name, answer],
                                 outputs=gr.Textbox(label="QA Submission Result"))
 
 

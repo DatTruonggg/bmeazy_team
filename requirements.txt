@@ -1,5 +1,5 @@
 pandas 
-numpy
+numpy==1.26
 matplotlib 
 python-dotenv 
 open_clip_torch
@@ -14,3 +14,4 @@ rapidfuzz
 deep_translator
 gradio
 boto3
+fastapi
