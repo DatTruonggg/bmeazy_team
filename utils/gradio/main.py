@@ -43,6 +43,7 @@ bucket_name = "bmeazy"
 search = TextSearch(json_path, json_path_cloud, clipb16_bin, clipv2_l14_bin, clipv2_h14_bin, audio_json_path, img2audio_json_path)
 
 DictKeyframe2Id = search.load_json_file(json_path)
+DictKeyframe2IdCloud = search.load_json_file(json_path_cloud)
 
 with open(map_keyframes, 'r') as f:
   KeyframesMapper = json.load(f)
@@ -79,7 +80,7 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
         _, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
                                                                   [list_clip_ids, list_clipv2_l14_ids])
     
-        infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
+        infos_query = list(map(DictKeyframe2IdCloud.get, list(list_ids)))
         list_image_paths = [info['image_path'] for info in infos_query]
         
     elif model_type == "clipv2_l14 + clipv2_h14": 
@@ -88,7 +89,7 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
         _, list_ids = merge_searching_results_by_addition([scores_clipv2_l14, scores_clipv2_h14],
                                                                   [list_clipv2_l14_ids, list_clipv2_h14_ids])
         
-        infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
+        infos_query = list(map(DictKeyframe2IdCloud.get, list(list_ids)))
         list_image_paths = [info['image_path'] for info in infos_query]
         
     elif model_type == "clip + clipv2_h14":
@@ -97,7 +98,7 @@ def text_to_image(text: str, top_k: int, model_type: str, storage: str):
         _, list_ids = merge_searching_results_by_addition([scores_clip, list_clip_ids],
                                                                   [scores_clipv2_h14, list_clipv2_h14_ids])
         
-        infos_query = list(map(DictKeyframe2Id.get, list(list_ids)))
+        infos_query = list(map(DictKeyframe2IdCloud.get, list(list_ids)))
         list_image_paths = [info['image_path'] for info in infos_query]
 
     # data = group_result_by_video(lst_scores, list_ids, list_image_paths, KeyframesMapper)
@@ -398,7 +399,7 @@ with gr.Blocks(css="""
                 answer = gr.Textbox(label="QA", placeholder="Your answer", scale=1)
 
             # Third row: Gallery for search results
-            image_output = gr.Gallery(label="Search Results", elem_id="image_gallery", columns=5, allow_preview=False, show_fullscreen_button=True)
+            image_output = gr.Gallery(label="Search Results", elem_id="image_gallery", columns=5, allow_preview=True, show_fullscreen_button=True)
             #csv_output = gr.File(label="Download CSV")
 
             # Set search button click action
