@@ -1,0 +1,17 @@
+pandas 
+numpy==1.26
+matplotlib 
+python-dotenv 
+open_clip_torch
+faiss-cpu==1.8.0
+transformers
+flask
+flask-cors
+tqdm
+opencv-python
+scikit-learn
+rapidfuzz
+deep_translator
+gradio
+boto3
+fastapi

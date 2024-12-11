@@ -1,0 +1,10 @@
+# ------DATA ROOT------
+data_root_path: ./dataset/L29
+id2img: id2fps_full.json
+
+# ------DVC data version-----
+dvc_remote_name: gcs-storage
+dvc_remote_url: gs://life-log-24/data
+
+# ------Dokcer Image------
+docker_image_name: mdattr/text-to-image-retrieval

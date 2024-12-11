@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/e2ccdf1b57c4428fb02e71674cd77ff1/artifacts
+end_time: 1733118563702
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: e2ccdf1b57c4428fb02e71674cd77ff1
+run_name: 2024-12-02_12-48-59
+run_uuid: e2ccdf1b57c4428fb02e71674cd77ff1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1733118563693
+status: 4
+tags: []
+user_id: dattruong

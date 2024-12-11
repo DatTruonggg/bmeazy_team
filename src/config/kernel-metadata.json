@@ -1,0 +1,12 @@
+{
+    "id": "mdattr/open_clip_encoder",
+    "title": "CLIP-encoder",
+    "code_file": "../encoder/open_clip_encoder.ipynb",
+    "language": "python",
+    "kernel_type": "notebook",
+    "is_private": true,
+    "enable_gpu": true,
+    "enable_internet": true,
+    "dataset_sources": ["mdattrvuive/keyframeb3",
+                        "minhdat13/videos"]
+}  
