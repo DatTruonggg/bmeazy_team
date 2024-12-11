@@ -6,16 +6,11 @@
 1. [Setup](#1-setup)
 2. [Data preparation](#2-data-preparation)
     - [2.1 Download dataset](#21-download-dataset)
-    - [2.2 Continuous Delivery (CD)](#22-continuous-delivery-cd)
-    - [2.3 Continuous Deployment](#23-continuous-deployment)
-    
-3. [CI/CD in Machine Learning](#3-cicd-in-machine-learning)
-    - [3.1 Continuous Integration (CI) in ML](#31-continuous-integration-ci-in-ml)
-    - [3.2 Continuous Delivery (CD) in ML](#32-continuous-delivery-cd-in-ml)
-    - [3.3 Continuous Deployment in ML](#33-continuous-deployment-in-ml)
-4. [Jenkins](#4-jenkins)
-5. [Future Research](#future-research)
-6. [Reference](#reference)
+    - [2.2 Local database](#22-local-database)
+    - [2.3 Google Cloud Storage](#23-google-cloud-storage)
+3. [Docker](#3-docker)
+4. [CI/CD using Jenkins](#4-cicd-using-jenkins)
+
 
 ---
 ## 1. Setup
