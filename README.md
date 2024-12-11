@@ -1,32 +1,48 @@
-# Source code
-```cmd
-conda create -n bme python=3.11
-conda activate bme
-pip install -r requirements.txt
-pip install git+https://github.com/openai/CLIP.git
-```
+# Text to Image Retrieval
+
+---
+## **Table of Contents**
+
+1. [Setup](#1-setup)
+2. [Data preparation](#2-data-preparation)
+    - [2.1 Download dataset](#21-download-dataset)
+    - [2.2 Continuous Delivery (CD)](#22-continuous-delivery-cd)
+    - [2.3 Continuous Deployment](#23-continuous-deployment)
+    
+3. [CI/CD in Machine Learning](#3-cicd-in-machine-learning)
+    - [3.1 Continuous Integration (CI) in ML](#31-continuous-integration-ci-in-ml)
+    - [3.2 Continuous Delivery (CD) in ML](#32-continuous-delivery-cd-in-ml)
+    - [3.3 Continuous Deployment in ML](#33-continuous-deployment-in-ml)
+4. [Jenkins](#4-jenkins)
+5. [Future Research](#future-research)
+6. [Reference](#reference)
+
+---
+## 1. Setup
 
 
-change paths in `.env` file: 
-```python
-FAISS_CLIPV2_H14 = "/home/dattruong/dat/AI/Competition/BMEazy/data/clipv2_h14_cosine.bin"
-FAISS_CLIPV2_L14 = "/home/dattruong/dat/AI/Competition/BMEazy/data/faiss_clipv2l14_cosine.bin"
-FAISS_CLIP_B16 = "/home/dattruong/dat/AI/Competition/BMEazy/data/clip_b16_cosine.bin"
+## 2. Data preparation
+### 2.1 Kaggle dataset
+- You can get this project's dataset: [link](https://www.kaggle.com/datasets/mdattrvuive/keyframeb3/data)
+- EDA or training in Kaggle notebook
 
-ID2IMG = "/home/dattruong/dat/AI/Competition/BMEazy/data/id2img_fps.json"
-ID2IMG_CLOUD = "/home/dattruong/dat/AI/Competition/BMEazy/data/id2fps_cloud_v2.json"
-IDFOLDER = "/home/dattruong/dat/AI/Competition/BMEazy/data/id_folder.json"
+### 2.2 Download dataset (Optional)
+- The data of this project is very large, about ~200GiB (Keyframe dataset); if you want to extract from scratch, you can download the Video dataset (~200Gib also). But I just got 1/3 of the dataset for this demo. You can run `download_data.sh` to download the dataset.
+- If you don't want to download **Video data folder**, please `n` when run bash script.
+When you run `download_data.sh`: 
 
-SCENE_ID2INFO = "/home/dattruong/dat/AI/Competition/BMEazy/data/scene_id2info.json"
-AUDO_ID2IMG_FPS = "/home/dattruong/dat/AI/Competition/BMEazy/data/audio_id2img_id.json"
-VIDEO_ID2IMG_ID = "/home/dattruong/dat/AI/Competition/BMEazy/data/video_id2img_id.json"
-IMG_ID2AUDIO_ID = "/home/dattruong/dat/AI/Competition/BMEazy/data/img_id2audio_id.json"
-VIDEO_DIVSION_TAG = "/home/dattruong/dat/AI/Competition/BMEazy/data/video_division_tag.json"
-MAP_KEYFRAME = "/home/dattruong/dat/AI/Competition/BMEazy/data/map_keyframes.json"
+![download_keyframe](./static/images/keyframe-download.png)
 
-ROOT_DB = "/media/dattruong/568836F88836D669/Users/DAT/Hackathon/HCMAI24/Data"
-KEYFRAME_DB = "/media/dattruong/568836F88836D669/Users/DAT/Hackathon/HCMAI24/Data/Keyframe"
-VIDEO_DB = "/media/dattruong/568836F88836D669/Users/DAT/Hackathon/HCMAI24/Video"
+## 2.3 Run Clip-encoder (optional)
 
-PROJECT_ROOT = "/home/dattruong/dat/AI/Competition/BMEazy/"
-```
+![clipencoder](./static/images/clip_encoder.png)
+
+
+
+![gcp-init](./static/images/gcp-project-init.png)
+
+
+
+![dvc-dev](./static/images/dev-to-git-dev.png)
+
+![dvc-to-gcs](./static//images/dvc-to-gcs.png)

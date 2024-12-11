@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Update sys path to import TextSearch
+from utils.parse_frontend import parse_data
 from utils.text_search import TextSearch
 from utils.context_encoding import VisualEncoding
 from utils.combine_utils import merge_searching_results_by_addition
@@ -37,6 +38,7 @@ video_division_path = os.getenv("VIDEO_DIVSION_TAG")
 map_keyframes = os.getenv("MAP_KEYFRAME")
 video_id2img_id = os.getenv("VIDEO_ID2IMG_ID")
 root_db = os.getenv("ROOT_DB")
+
 
 FPS = 25.0
 s3 = boto3.client('s3', region_name='ap-southeast-1')
@@ -328,11 +330,33 @@ def get_frame_select_index(evt: gr.SelectData):
         image_name = parts[1]   # Lấy tên hình ảnh
     return image_name
 
+def show_icons():
+    icon_paths = []
+    try:
+        icon_paths = [os.path.join("./assets/icons", f) for f in os.listdir("./assets/icons") if f.endswith(('.png', '.jpg', '.jpeg'))]
+        if not icon_paths:
+            print("No icons found in the specified directory.")
+    except Exception as e:
+        print(f"Error loading icons: {e}")  # In ra lỗi để kiểm tra
+    return icon_paths
+
+def show_colors():
+    color_paths = []
+    try:
+        color_paths = [os.path.join("./assets/colors", f) for f in os.listdir("./assets/colors") if f.endswith(('.png', '.jpg', '.jpeg'))]
+        if not color_paths:
+            print("No colors found in the specified directory.")
+    except Exception as e:
+        print(f"Error loading colors: {e}")  # In ra lỗi để kiểm tra
+    return color_paths
+
+
+
 # Gradio Interface with custom CSS for the search box and button
-with gr.Blocks(css="""
+with gr.Blocks(fill_width = True, css="""
     .input-button-container {
         display: flex;
-        align-items: center;
+        align-items: center;    
     }
     .input-button-container input[type="text"] {
         flex-grow: 1;
@@ -340,30 +364,36 @@ with gr.Blocks(css="""
     .input-button-container button {
         width: 20%; /* Set button width to 1/5th of the input box */
     }
+    .icon.img img, .color.img img {
+        max-height: 20px; /* Set maximum height for icons and colors */
+        max-width: 20px;  /* Set maximum width for icons and colors */
+        object-fit: fit; /* Ensures that the aspect ratio is maintained */
+        padding: 0px;
+        align-items: center;
+        width: 100%; /* Đảm bảo hình ảnh chiếm toàn bộ chiều rộng của thẻ cha */
+        height: auto; 
+    }
 """) as demo:
     
     with gr.Row():
-        
         # Left side (3 parts): Text-to-Image search
-        with gr.Column():
+        with gr.Column(scale = 6):
             with gr.Row():
-                with gr.Column(scale=4):  # Column for Markdown
-                    gr.Markdown("# BMEazy")
-                with gr.Column(scale=3):  # Column for Session ID
-                    session_id = gr.Textbox(show_label=False, placeholder="SessionID", scale=1)
-                with gr.Column(scale=3):  # Column for Evaluation ID
-                    evaluation_id = gr.Textbox(show_label=False, placeholder="EvaluationID", scale=1)
+                gr.Markdown("# BMEazy")
+                session_id = gr.Textbox(show_label=False, placeholder="SessionID", scale=1)
+                evaluation_id = gr.Textbox(show_label=False, placeholder="EvaluationID", scale=1)
 
 
             # First row: Text Input with Search Button inside
             with gr.Row(elem_classes="input-button-container"):
-                text_input = gr.Textbox(show_label=False, placeholder="Enter your query...", scale=5)
-                search_button = gr.Button("Search", scale=1)
-                next_search_button = gr.Button("Next Img", scale=1)
-                image_search_button = gr.Button("Search KNN", scale=1)
-                convert_ms = gr.Button("Conv Ms", scale=1)
-                submit_kis_button = gr.Button("SubKIS", scale=1)
-                submit_qa_button = gr.Button("SubQA", scale=1)
+                text_input = gr.Textbox(show_label=False, placeholder="Enter your query...", scale=8)
+                search_button = gr.Button("Search", scale=2)
+            with gr.Row():
+                next_search_button = gr.Button("Next Img", scale=2)
+                image_search_button = gr.Button("Search KNN", scale=2)
+                convert_ms = gr.Button("Conv Ms", scale=2)
+                submit_kis_button = gr.Button("SubKIS", scale=2)
+                submit_qa_button = gr.Button("SubQA", scale=2)
 
             # Second row: Top K Results and Model Type underneath
             with gr.Row():
@@ -410,7 +440,32 @@ with gr.Blocks(css="""
             submit_qa_button.click(fn=submit_qa, 
                                 inputs=[session_id, evaluation_id, folder_name, milisec_name, answer],
                                 outputs=gr.Textbox(label="QA Submission Result"))
+        with gr.Column(scale = 4):
+            with gr.Blocks(): 
+                with gr.Row():
+                    gr.Markdown("## Filter")
+                with gr.Row(): 
+                    icons_output = gr.Gallery(
+                        elem_classes="icon img",
+                        value=show_icons(),
+                        label="Icons",
+                        show_label=False,
+                        allow_preview=False)
 
+                    colors_output = gr.Gallery(
+                        elem_classes="color img",
+                        value=show_colors(),
+                        label="Colors",
+                        show_label=False,
+                        allow_preview=False)
+                with gr.Row():
+                    tags_input = gr.Textbox(placeholder="Tag", scale=3)
+                    color_input = gr.Text(placeholder="Color", scale=3)
+                with gr.Row():
+                    ocr_input = gr.Textbox(label="OCR Search", placeholder="OCR text")
+                    asr_input = gr.Textbox(label="ASR Search", placeholder="ASR text")
+                search_button = gr.Button("Search")
+                image_output = gr.Gallery(label="Search Results", elem_id="image_gallery", columns=5, allow_preview=True, show_fullscreen_button=True)
 
 # Launch the app
 demo.launch(server_port=8386, allowed_paths = [root_db])

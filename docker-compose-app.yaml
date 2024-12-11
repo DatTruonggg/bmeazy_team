@@ -1,0 +1,17 @@
+version: "3.10"
+
+services:
+  text-to-image:
+    image: mdattr/text-to-image-retrieval:latest
+    platform: linux/amd64
+    container_name: text-to-image-container
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.application
+      args:
+        USER_NAME: "${USER_NAME:-dattruong}"
+    ports:
+      - 8001:8386
+    volumes:
+      - ./:/app/
+    init: true
